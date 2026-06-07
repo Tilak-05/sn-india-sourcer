@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SN Sourcer — ServiceNow Talent Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,300&family=Geist+Mono:wght@300;400;500&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#0e0f11;
+  --surface:#161719;
+  --surface2:#1c1e21;
+  --surface3:#212428;
+  --border:#272a2f;
+  --border2:#32363d;
+  --accent:#4ade80;
+  --accent-dim:rgba(74,222,128,0.12);
+  --accent-border:rgba(74,222,128,0.22);
+  --accent2:#7b9cff;
+  --accent2-dim:rgba(123,156,255,0.1);
+  --accent2-border:rgba(123,156,255,0.22);
+  --accent3:#f4a43a;
+  --accent3-dim:rgba(244,164,58,0.08);
+  --accent3-border:rgba(244,164,58,0.2);
+  --danger:#f87171;
+  --warn:#f4a43a;
+  --text:#dde1e7;
+  --text2:#a8adb8;
+  --muted:#5c6270;
+  --radius:10px;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Geist',sans-serif;
+  font-weight:400;
+  min-height:100vh;
+  font-size:14px;
+  line-height:1.5;
+  /* subtle noise texture */
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+}
+
+/* ─── HEADER ─── */
+header{
+  background:rgba(14,15,17,0.85);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:0 32px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:58px;
+  position:sticky;top:0;z-index:100;
+}
+
+.logo{
+  font-family:'Fraunces',serif;
+  font-weight:600;
+  font-size:1.05rem;
+  color:var(--text);
+  display:flex;align-items:center;gap:10px;
+  letter-spacing:-0.01em;
+}
+.logo em{
+  font-style:italic;
+  color:var(--accent);
+  font-weight:300;
+}
+.logo-dot{
+  width:6px;height:6px;
+  background:var(--accent);
+  border-radius:50%;
+  box-shadow:0 0 6px var(--accent);
+  animation:pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.35;transform:scale(1.6);}}
+
+.header-right{display:flex;align-items:center;gap:8px;}
+
+.tag{
+  font-family:'Geist Mono',monospace;
+  font-size:0.6rem;
+  font-weight:500;
+  padding:3px 10px;
+  border-radius:100px;
+  background:var(--surface2);
+  color:var(--text2);
+  border:1px solid var(--border2);
+  letter-spacing:0.04em;
+  text-transform:uppercase;
+}
+
+/* ─── BUTTONS ─── */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  border:none;border-radius:8px;padding:8px 15px;
+  font-family:'Geist',sans-serif;font-weight:500;font-size:0.78rem;
+  cursor:pointer;transition:all 0.18s;letter-spacing:0.01em;
+}
+.btn:disabled{opacity:0.38;cursor:not-allowed;}
+
+.btn-primary{
+  background:var(--accent);
+  color:#0a1a10;
+  font-weight:600;
+  box-shadow:0 0 16px rgba(74,222,128,0.18);
+}
+.btn-primary:hover:not(:disabled){
+  background:#6ee89a;
+  box-shadow:0 0 22px rgba(74,222,128,0.28);
+  transform:translateY(-1px);
+}
+
+.btn-secondary{
+  background:var(--surface2);
+  color:var(--text2);
+  border:1px solid var(--border2);
+}
+.btn-secondary:hover:not(:disabled){
+  border-color:var(--accent2);
+  color:var(--accent2);
+  background:rgba(123,156,255,0.06);
+}
+
+.spinner{
+  width:12px;height:12px;
+  border:1.5px solid rgba(10,26,16,0.3);
+  border-top-color:#0a1a10;
+  border-radius:50%;
+  animation:spin 0.65s linear infinite;
+  display:none;
+}
+.loading .spinner{display:block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ─── LOG ─── */
+#fetchLog{
+  display:none;margin:12px 32px 0;
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);
+  padding:12px 16px;font-size:0.71rem;max-height:140px;overflow-y:auto;line-height:2;
+  font-family:'Geist Mono',monospace;
+}
+#fetchLog.show{display:block;}
+.log-line{color:var(--muted);}
+.log-line.ok{color:var(--accent);}
+.log-line.err{color:var(--danger);}
+.log-line.warn{color:var(--warn);}
+
+/* ─── KEY WARNING ─── */
+#keyWarning{
+  display:none;margin:12px 32px 0;
+  background:rgba(244,164,58,0.06);
+  border:1px solid var(--accent3-border);
+  border-radius:var(--radius);padding:14px 18px;
+  font-size:0.76rem;color:var(--warn);line-height:1.75;
+  font-family:'Geist',sans-serif;
+}
+#keyWarning.show{display:block;}
+#keyWarning strong{font-weight:600;}
+#keyWarning code{
+  background:rgba(244,164,58,0.12);
+  padding:1px 6px;border-radius:4px;
+  font-family:'Geist Mono',monospace;font-size:0.68rem;
+}
+
+/* ─── MAIN ─── */
+main{padding:28px 32px;}
+
+/* ─── STAT CARDS ─── */
+.stats-row{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:12px;margin-bottom:20px;
+}
+.stat-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:20px 22px;
+  transition:border-color 0.2s, background 0.2s;
+  position:relative;
+  overflow:hidden;
+}
+.stat-card::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent);
+}
+.stat-card:hover{
+  border-color:var(--border2);
+  background:var(--surface2);
+}
+.stat-label{
+  font-family:'Geist',sans-serif;
+  font-size:0.68rem;
+  font-weight:500;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  margin-bottom:8px;
+}
+.stat-value{
+  font-family:'Fraunces',serif;
+  font-size:2.1rem;
+  font-weight:500;
+  line-height:1;
+  letter-spacing:-0.02em;
+  color:var(--text);
+}
+.stat-value.green{color:var(--accent);}
+.stat-sub{
+  font-size:0.67rem;
+  color:var(--muted);
+  margin-top:6px;
+  font-family:'Geist',sans-serif;
+}
+
+/* ─── CHART CARDS ─── */
+.charts-row{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:12px;margin-bottom:20px;
+}
+.chart-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:20px 22px;
+}
+.chart-title{
+  font-family:'Geist',sans-serif;
+  font-size:0.67rem;
+  font-weight:500;
+  text-transform:uppercase;
+  letter-spacing:0.1em;
+  color:var(--muted);
+  margin-bottom:16px;
+}
+.bar-item{margin-bottom:11px;}
+.bar-label{display:flex;justify-content:space-between;margin-bottom:4px;}
+.bar-name{font-size:0.75rem;color:var(--text2);font-family:'Geist',sans-serif;}
+.bar-count{font-size:0.72rem;color:var(--muted);font-family:'Geist Mono',monospace;}
+.bar-track{height:4px;background:var(--surface3);border-radius:100px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:100px;transition:width 0.8s cubic-bezier(0.16,1,0.3,1);}
+.bar-fill.loc{background:var(--accent2);}
+.bar-fill.role{background:var(--accent);}
+
+/* ─── CONTROLS ─── */
+.controls{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;}
+.search-wrap{flex:1;min-width:180px;position:relative;}
+.search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);}
+
+input[type=text]{
+  width:100%;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:9px 12px 9px 36px;
+  color:var(--text);
+  font-family:'Geist',sans-serif;
+  font-size:0.82rem;
+  outline:none;
+  transition:border-color 0.18s, background 0.18s;
+}
+input[type=text]::placeholder{color:var(--muted);}
+input[type=text]:focus{
+  border-color:var(--accent2);
+  background:var(--surface2);
+}
+
+select{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:9px 13px;
+  color:var(--text);
+  font-family:'Geist',sans-serif;
+  font-size:0.82rem;
+  outline:none;cursor:pointer;
+  transition:border-color 0.18s;
+}
+select:focus{border-color:var(--accent2);}
+
+.results-info{
+  font-size:0.7rem;
+  color:var(--muted);
+  margin-left:auto;
+  font-family:'Geist Mono',monospace;
+}
+
+/* ─── TABLE ─── */
+.table-wrap{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+}
+table{width:100%;border-collapse:collapse;}
+thead{background:var(--surface2);}
+th{
+  padding:11px 16px;
+  text-align:left;
+  font-family:'Geist',sans-serif;
+  font-size:0.63rem;
+  font-weight:500;
+  text-transform:uppercase;
+  letter-spacing:0.09em;
+  color:var(--muted);
+  border-bottom:1px solid var(--border);
+}
+tbody tr{border-bottom:1px solid var(--border);transition:background 0.1s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:rgba(255,255,255,0.016);}
+td{padding:13px 16px;font-size:0.8rem;vertical-align:middle;}
+
+.candidate-name{
+  font-family:'Geist',sans-serif;
+  font-weight:600;
+  font-size:0.85rem;
+  color:var(--text);
+}
+.candidate-title{
+  font-size:0.69rem;
+  color:var(--muted);
+  margin-top:2px;
+  max-width:210px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-family:'Geist',sans-serif;
+}
+
+.loc-badge{
+  display:inline-block;
+  padding:3px 9px;border-radius:100px;
+  font-size:0.63rem;font-weight:500;
+  font-family:'Geist',sans-serif;
+  background:var(--accent2-dim);
+  color:var(--accent2);
+  border:1px solid var(--accent2-border);
+}
+.role-badge{
+  display:inline-block;
+  padding:3px 9px;border-radius:100px;
+  font-size:0.63rem;font-weight:500;
+  font-family:'Geist',sans-serif;
+  background:var(--accent3-dim);
+  color:var(--accent3);
+  border:1px solid var(--accent3-border);
+  max-width:150px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.otw-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 9px;border-radius:100px;
+  font-size:0.63rem;font-weight:500;
+  font-family:'Geist',sans-serif;
+  background:var(--accent-dim);
+  color:var(--accent);
+  border:1px solid var(--accent-border);
+}
+.otw-dot{width:5px;height:5px;background:var(--accent);border-radius:50%;box-shadow:0 0 4px var(--accent);}
+
+.li-link{
+  color:var(--accent2);
+  text-decoration:none;
+  font-size:0.73rem;
+  font-family:'Geist',sans-serif;
+  display:inline-flex;align-items:center;gap:4px;
+  transition:color 0.15s, opacity 0.15s;
+  opacity:0.8;
+}
+.li-link:hover{opacity:1;color:#a5b4ff;}
+
+.del-btn{
+  background:none;border:none;cursor:pointer;
+  color:var(--muted);padding:5px;border-radius:5px;
+  transition:color 0.15s, background 0.15s;
+}
+.del-btn:hover{color:var(--danger);background:rgba(248,113,113,0.08);}
+
+.snippet-cell{
+  max-width:180px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:0.71rem;
+  color:var(--muted);
+  font-family:'Geist',sans-serif;
+}
+
+/* ─── PAGINATION ─── */
+.pagination{display:flex;align-items:center;justify-content:center;gap:8px;padding:18px;}
+.pg-btn{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  color:var(--text2);
+  border-radius:7px;
+  padding:6px 14px;
+  cursor:pointer;
+  font-family:'Geist',sans-serif;
+  font-size:0.75rem;
+  transition:all 0.15s;
+}
+.pg-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
+.pg-btn:disabled{opacity:0.28;cursor:not-allowed;}
+.pg-info{font-size:0.72rem;color:var(--muted);font-family:'Geist Mono',monospace;}
+
+/* ─── EMPTY STATE ─── */
+.empty{padding:56px;text-align:center;color:var(--muted);font-family:'Geist',sans-serif;}
+.empty-icon{font-size:2rem;margin-bottom:12px;opacity:0.6;}
+.empty h3{font-size:0.95rem;margin-bottom:5px;color:var(--text2);font-weight:500;}
+.empty p{font-size:0.76rem;}
+
+/* ─── TOAST ─── */
+#toast{
+  position:fixed;bottom:24px;right:24px;
+  background:var(--surface2);
+  border:1px solid var(--border2);
+  border-radius:10px;
+  padding:12px 18px;
+  font-size:0.77rem;
+  font-family:'Geist',sans-serif;
+  color:var(--text);
+  transform:translateY(60px);
+  opacity:0;
+  transition:all 0.28s cubic-bezier(0.16,1,0.3,1);
+  z-index:999;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+#toast.show{transform:translateY(0);opacity:1;}
+#toast.success{border-color:var(--accent-border);color:var(--accent);}
+#toast.error{border-color:rgba(248,113,113,0.35);color:var(--danger);}
+#toast.warn{border-color:var(--accent3-border);color:var(--warn);}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:900px){
+  .stats-row{grid-template-columns:1fr 1fr;}
+  .charts-row{grid-template-columns:1fr;}
+  header,main{padding-left:16px;padding-right:16px;}
+  #fetchLog,#keyWarning{margin-left:16px;margin-right:16px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="logo-dot"></div>SN <em>Sourcer</em></div>
+  <div class="header-right">
+    <span class="tag">India</span>
+    <span class="tag">Open To Work</span>
+    <button class="btn btn-secondary" id="exportBtn" onclick="exportCSV()">
+      <span>⬇️ Export CSV</span>
+    </button>
+    <button class="btn btn-primary" id="fetchBtn" onclick="triggerFetch()">
+      <div class="spinner"></div>
+      <span>⚡ Fetch New</span>
+    </button>
+  </div>
+</header>
+
+<div id="keyWarning">
+  <strong>⚠️ SerpAPI keys invalid or exhausted</strong><br>
+  Your SerpAPI keys returned 403 — they may be expired or wrong.<br>
+  1. Go to <strong>serpapi.com</strong> → Dashboard → copy your API key<br>
+  2. Open <code>config/settings.py</code> and paste it in <code>SERPAPI_KEYS</code><br>
+  3. Restart the server, then click <strong>⚡ Fetch New</strong><br><br>
+  Your candidates are saved in the database. Use <strong>⬇️ Export CSV</strong> to download.
+</div>
+
+<div id="fetchLog"></div>
+
+<main>
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Total Candidates</div>
+      <div class="stat-value green" id="statTotal">—</div>
+      <div class="stat-sub">in database</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Open To Work</div>
+      <div class="stat-value" id="statOTW">—</div>
+      <div class="stat-sub">actively seeking</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Locations</div>
+      <div class="stat-value" id="statLocs">—</div>
+      <div class="stat-sub">cities covered</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Roles</div>
+      <div class="stat-value" id="statRoles">—</div>
+      <div class="stat-sub">job types</div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">By Location</div>
+      <div id="locChart"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">By Role</div>
+      <div id="roleChart"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="search-wrap">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="searchInput" placeholder="Search name, title, snippet..." oninput="debounceSearch()"/>
+    </div>
+    <select id="locFilter" onchange="loadCandidates(0)">
+      <option value="all">All Locations</option>
+    </select>
+    <select id="roleFilter" onchange="loadCandidates(0)">
+      <option value="all">All Roles</option>
+    </select>
+    <div class="results-info" id="resultsInfo"></div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Candidate</th><th>Location</th><th>Role</th>
+          <th>Status</th><th>LinkedIn</th><th>Snippet</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div id="emptyState" class="empty" style="display:none">
+      <div class="empty-icon">🔍</div>
+      <h3>No candidates found</h3>
+      <p>Adjust your filters or fetch new candidates.</p>
+    </div>
+    <div class="pagination">
+      <button class="pg-btn" id="prevBtn" onclick="changePage(-1)" disabled>← Prev</button>
+      <span class="pg-info" id="pgInfo"></span>
+      <button class="pg-btn" id="nextBtn" onclick="changePage(1)" disabled>Next →</button>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+let currentPage=0, pageSize=20, totalResults=0, searchTimer=null;
+
+window.onload=()=>{ loadStats(); loadFilters(); loadCandidates(0); };
+
+async function loadStats(){
+  const d=await fetch('/api/stats').then(r=>r.json());
+  document.getElementById('statTotal').textContent=d.total;
+  document.getElementById('statOTW').textContent=d.total;
+  document.getElementById('statLocs').textContent=d.by_location.length;
+  document.getElementById('statRoles').textContent=d.by_role.length;
+  renderBars('locChart',d.by_location.slice(0,6).map(x=>({label:x.location,count:x.count})),'loc');
+  renderBars('roleChart',d.by_role.slice(0,6).map(x=>({label:x.role,count:x.count})),'role');
+}
+function renderBars(id,items,cls){
+  const max=Math.max(...items.map(x=>x.count),1);
+  document.getElementById(id).innerHTML=items.map(x=>`
+    <div class="bar-item">
+      <div class="bar-label"><span class="bar-name">${esc(x.label||'Unknown')}</span><span class="bar-count">${x.count}</span></div>
+      <div class="bar-track"><div class="bar-fill ${cls}" style="width:${(x.count/max*100).toFixed(1)}%"></div></div>
+    </div>`).join('');
+}
+
+async function loadFilters(){
+  const d=await fetch('/api/filters').then(r=>r.json());
+  const ls=document.getElementById('locFilter');
+  d.locations.forEach(l=>ls.add(new Option(l,l)));
+  const rs=document.getElementById('roleFilter');
+  d.roles.forEach(r=>rs.add(new Option(r,r)));
+}
+
+async function loadCandidates(page){
+  currentPage=page;
+  const search=document.getElementById('searchInput').value;
+  const loc=document.getElementById('locFilter').value;
+  const role=document.getElementById('roleFilter').value;
+  let url=`/api/candidates?skip=${page*pageSize}&limit=${pageSize}`;
+  if(search) url+=`&search=${encodeURIComponent(search)}`;
+  if(loc!=='all') url+=`&location=${encodeURIComponent(loc)}`;
+  if(role!=='all') url+=`&role=${encodeURIComponent(role)}`;
+  const d=await fetch(url).then(r=>r.json());
+  totalResults=d.total;
+  renderTable(d.data,page*pageSize);
+  updatePagination();
+}
+function renderTable(rows,offset){
+  const tbody=document.getElementById('tbody');
+  const empty=document.getElementById('emptyState');
+  if(!rows.length){
+    tbody.innerHTML='';empty.style.display='block';
+    document.getElementById('resultsInfo').textContent='0 results';return;
+  }
+  empty.style.display='none';
+  document.getElementById('resultsInfo').textContent=`${totalResults} result${totalResults!==1?'s':''}`;
+  tbody.innerHTML=rows.map((c,i)=>`
+    <tr>
+      <td style="color:var(--muted);font-size:0.67rem">${offset+i+1}</td>
+      <td><div class="candidate-name">${esc(c.name)}</div>
+          <div class="candidate-title">${esc(c.title)}</div></td>
+      <td><span class="loc-badge">${esc(c.location||'—')}</span></td>
+      <td><span class="role-badge">${esc(c.role_searched||'—')}</span></td>
+      <td><span class="otw-badge"><div class="otw-dot"></div>Open</span></td>
+      <td><a href="${esc(c.linkedin_url)}" target="_blank" class="li-link">
+        <svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+        Profile</a></td>
+      <td class="snippet-cell" title="${esc(c.snippet)}">${esc(c.snippet||'—')}</td>
+      <td><button class="del-btn" onclick="deleteCandidate(${c.id})" title="Remove">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button></td>
+    </tr>`).join('');
+}
+function updatePagination(){
+  const pages=Math.ceil(totalResults/pageSize);
+  document.getElementById('pgInfo').textContent=totalResults?`Page ${currentPage+1} of ${pages}`:'';
+  document.getElementById('prevBtn').disabled=currentPage===0;
+  document.getElementById('nextBtn').disabled=currentPage>=pages-1;
+}
+function changePage(d){ loadCandidates(currentPage+d); }
+function debounceSearch(){ clearTimeout(searchTimer);searchTimer=setTimeout(()=>loadCandidates(0),350); }
+
+async function deleteCandidate(id){
+  if(!confirm('Remove this candidate?')) return;
+  await fetch(`/api/candidates/${id}`,{method:'DELETE'});
+  showToast('Candidate removed','success');
+  loadCandidates(currentPage);loadStats();
+}
+
+let pollTimer=null;
+function setBusy(busy){
+  ['fetchBtn'].forEach(id=>{
+    const b=document.getElementById(id);
+    b.disabled=busy;
+    if(busy) b.classList.add('loading'); else b.classList.remove('loading');
+  });
+}
+
+async function triggerFetch(){
+  setBusy(true);clearLog();showLog();
+  document.getElementById('keyWarning').classList.remove('show');
+  const d=await fetch('/api/fetch',{method:'POST'}).then(r=>r.json());
+  if(d.status==='already_running') appendLog('Already running...','warn');
+  else appendLog('⚡ Fetch started — validating SerpAPI keys...');
+  pollStatus();
+}
+
+function exportCSV(){
+  showToast('Downloading CSV...','');
+  window.location.href='/api/export-csv';
+}
+
+async function pollStatus(){
+  clearTimeout(pollTimer);
+  const d=await fetch('/api/fetch/status').then(r=>r.json());
+  const logEl=document.getElementById('fetchLog');
+  const current=logEl.querySelectorAll('.log-line').length;
+  if(d.log&&d.log.length>current){
+    for(let i=current;i<d.log.length;i++){
+      const msg=d.log[i];
+      const cls=msg.startsWith('❌')?'err':msg.startsWith('✅')||msg.startsWith('📁')?'ok':msg.startsWith('⚠️')?'warn':'';
+      appendLog(msg,cls);
+    }
+  }
+  if(d.running){ pollTimer=setTimeout(pollStatus,1500);return; }
+  setBusy(false);
+  if(d.error){
+    const isKeyErr=d.error.toLowerCase().includes('invalid')||d.error.toLowerCase().includes('expired')||d.error.toLowerCase().includes('403');
+    if(isKeyErr) document.getElementById('keyWarning').classList.add('show');
+    showToast('Error: '+d.error,'error');
+  } else {
+    if(d.added>0) showToast(`✅ ${d.added} new candidates added!`,'success');
+    else showToast('Done — no new candidates (all already seen)','warn');
+    loadStats();loadCandidates(0);
+    document.getElementById('locFilter').innerHTML='<option value="all">All Locations</option>';
+    document.getElementById('roleFilter').innerHTML='<option value="all">All Roles</option>';
+    loadFilters();
+  }
+}
+
+function clearLog(){ document.getElementById('fetchLog').innerHTML=''; }
+function showLog(){ document.getElementById('fetchLog').classList.add('show'); }
+function appendLog(msg,cls=''){
+  const el=document.getElementById('fetchLog');
+  const d=document.createElement('div');
+  d.className='log-line'+(cls?' '+cls:'');
+  d.textContent='> '+msg;
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+
+function esc(s){ return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):''; }
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='show '+(type||'');
+  setTimeout(()=>t.className='',3500);
+}
+</script>
+</body>
+</html>

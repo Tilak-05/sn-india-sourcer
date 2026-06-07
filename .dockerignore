@@ -1,0 +1,17 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.git
+.gitignore
+output/candidates.json
+output/candidates.csv
+output/seen_urls.txt
+output/*.db
+*.db
+flyctl.exe
+fly-install.ps1
+DEPLOY.md
+DB_PATH_NOTE.txt
