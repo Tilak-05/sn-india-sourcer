@@ -1,7 +1,7 @@
 import os
 
 INDIA_LOCATIONS = ["India","Bangalore","Hyderabad","Pune","Mumbai","Chennai","Delhi","Noida","Gurgaon"]
-SN_ROLES = ["ServiceNow Developer","ServiceNow Administrator","ServiceNow Architect","ServiceNow Consultant","ServiceNow ITSM","ServiceNow Platform Engineer"]
+SN_ROLES = ["ServiceNow Developer","ServiceNow Administrator","ServiceNow Architect","ServiceNow Consultant","ServiceNow ITSM","ITSM","ServiceNow Itom","custom app","HRSD","SecOps","GRC","ITOM","ITBM","CSM","FSM","ServiceNow Developer","ServiceNow consultant"]
 
 OUTPUT_CSV  = "output/candidates.csv"
 OUTPUT_JSON = "output/candidates.json"
