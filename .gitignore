@@ -7,7 +7,6 @@ env/
 # ── Environment / Secrets ──
 .env
 .env.*
-config/settings.py
 
 # ── Python ──
 __pycache__/

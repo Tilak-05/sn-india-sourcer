@@ -33,8 +33,10 @@ class KeyManager:
         return True
     def has_key(self): return self.index < len(self.keys)
 
+import datetime
+
 def build_query(role, location):
-    return f'site:linkedin.com/in "{role}" "{location}" ("open to work" OR "#opentowork")'
+    return f'site:linkedin.com/in {role} {location} -jobs -hiring -"we are hiring" -recruiter ("open to work" OR "#opentowork")'
 
 def serpapi_search(query, start, key):
     params = {"engine":"google","q":query,"start":start,"num":10,"api_key":key}
@@ -72,10 +74,14 @@ def scrape(max_results=MAX_RESULTS_PER_SOURCE, progress_callback=None):
     seen_urls = load_seen_urls()
     km = KeyManager(SERPAPI_KEYS)
     new_candidates = []
-    for role in SN_ROLES[:4]:
-        for location in INDIA_LOCATIONS[:5]:
+    queries_run = 0
+    for role in SN_ROLES:
+        if queries_run >= 20: break
+        for location in INDIA_LOCATIONS:
+            if queries_run >= 20: break
             if not km.has_key(): return new_candidates
             query = build_query(role, location)
+            queries_run += 1
             if progress_callback:
                 progress_callback(f"Searching: {role} | {location}")
             for start in range(0, 30, 10):

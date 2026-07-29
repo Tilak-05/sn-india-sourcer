@@ -18,7 +18,7 @@ def sanitize(text):
     return text.encode("utf-8", errors="replace").decode("utf-8")
 
 
-def run_fetch():
+def run_fetch(fresh=False, roles=None, skills=None):
     import sys, os, json
     import pandas as pd
     import requests as req
@@ -64,9 +64,12 @@ def run_fetch():
 
         log(f"{len(valid_keys)} valid key(s) found. Starting scrape...")
 
+        selected_roles = roles or SN_ROLES[:4]
+        log(f"Roles: {', '.join(selected_roles)}")
+
         seen_file = "output/seen_urls.txt"
         seen_urls = set()
-        if os.path.exists(seen_file):
+        if not fresh and os.path.exists(seen_file):
             with open(seen_file) as f:
                 seen_urls = set(l.strip() for l in f if l.strip())
         log(f"Previously seen: {len(seen_urls)} URLs (will skip these)")
@@ -74,12 +77,22 @@ def run_fetch():
         key_idx = 0
         new_candidates = []
 
-        for role in SN_ROLES[:4]:
-            for loc in INDIA_LOCATIONS[:5]:
+        import datetime
+        after_date = (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        queries_run = 0
+
+        for role in selected_roles:
+            if queries_run >= 20: break
+            for loc in INDIA_LOCATIONS:
+                if queries_run >= 20: break
                 if key_idx >= len(valid_keys):
                     log("All key quotas exhausted."); break
-                query = f'site:linkedin.com/in "{role}" "{loc}" ("open to work" OR "#opentowork")'
-                log(f"→ {role} | {loc}")
+                query = f'site:linkedin.com/in {role} {loc} -jobs -hiring -"we are hiring" -recruiter ("open to work" OR "#opentowork")'
+                if skills:
+                    query += f' "{skills}"'
+                log(f"→ {role} | {loc}" + (f" | {skills}" if skills else ""))
+                queries_run += 1
 
                 for start in range(0, 30, 10):
                     if key_idx >= len(valid_keys): break
@@ -139,6 +152,7 @@ def run_fetch():
                     role_searched=c.get("role_searched", ""),
                     open_to_work=bool(c.get("open_to_work", True)),
                     snippet=c.get("snippet", ""),
+                    source="serpapi",
                 ))
                 added += 1
             db.commit()
@@ -149,7 +163,7 @@ def run_fetch():
             all_rows = db.query(C).all()
             data = [{"name": r.name, "title": r.title, "linkedin_url": r.linkedin_url,
                      "location": r.location, "role_searched": r.role_searched,
-                     "open_to_work": r.open_to_work, "snippet": r.snippet} for r in all_rows]
+                     "open_to_work": r.open_to_work, "snippet": r.snippet, "source": r.source} for r in all_rows]
             pd.DataFrame(data).to_csv("output/candidates.csv", index=False, encoding="utf-8")
             log(f"📁 Exported {len(data)} total to CSV.")
         except Exception as e:
@@ -216,10 +230,11 @@ def run_import_json():
 
 
 @router.post("/fetch")
-def trigger_fetch(background_tasks: BackgroundTasks):
+def trigger_fetch(background_tasks: BackgroundTasks, fresh: bool = Query(False), roles: str = Query(""), skills: str = Query("")):
     if fetch_state["running"]:
         return {"status": "already_running"}
-    background_tasks.add_task(run_fetch)
+    role_list = [r.strip() for r in roles.split(",") if r.strip()] if roles else None
+    background_tasks.add_task(run_fetch, fresh, role_list, skills)
     return {"status": "started"}
 
 @router.post("/import-json")
@@ -264,6 +279,7 @@ def get_candidates(
             "linkedin_url": c.linkedin_url, "location": c.location,
             "role_searched": c.role_searched, "open_to_work": c.open_to_work,
             "snippet": c.snippet,
+            "source": c.source,
             "created_at": c.created_at.isoformat() if c.created_at else None,
         } for c in items],
     }
@@ -290,6 +306,18 @@ def get_filters(db: Session = Depends(get_db)):
     return {"locations": locations, "roles": roles}
 
 
+@router.get("/available-roles")
+def get_available_roles():
+    from config.settings import SN_ROLES
+    seen = set()
+    unique = []
+    for r in SN_ROLES:
+        if r not in seen:
+            seen.add(r)
+            unique.append(r)
+    return {"roles": unique}
+
+
 @router.delete("/candidates/{candidate_id}")
 def delete_candidate(candidate_id: int, db: Session = Depends(get_db)):
     c = db.query(Candidate).filter(Candidate.id == candidate_id).first()
@@ -304,11 +332,11 @@ def export_csv(db: Session = Depends(get_db)):
     rows = db.query(Candidate).order_by(Candidate.id.desc()).all()
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["id","name","title","linkedin_url","location","role_searched","open_to_work","snippet","created_at"])
+    writer.writerow(["id","name","title","linkedin_url","location","role_searched","open_to_work","snippet","source","created_at"])
     for c in rows:
         writer.writerow([
             c.id, c.name, c.title, c.linkedin_url, c.location,
-            c.role_searched, c.open_to_work, c.snippet,
+            c.role_searched, c.open_to_work, c.snippet, c.source,
             c.created_at.isoformat() if c.created_at else ""
         ])
     output.seek(0)

@@ -18,6 +18,7 @@ class Candidate(Base):
     role_searched = Column(String, default="")
     open_to_work  = Column(Boolean, default=True)
     snippet       = Column(String, default="")
+    source        = Column(String, default="serpapi")
     created_at    = Column(DateTime, default=datetime.utcnow)
 
 def get_db():

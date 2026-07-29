@@ -371,6 +371,15 @@ td{padding:13px 16px;font-size:0.8rem;vertical-align:middle;}
 }
 .li-link:hover{opacity:1;color:#a5b4ff;}
 
+.source-badge{
+  display:inline-block;padding:3px 8px;border-radius:4px;
+  font-size:0.6rem;font-weight:600;font-family:'Geist',sans-serif;
+  text-transform:uppercase;letter-spacing:0.04em;
+}
+.source-badge.li{background:rgba(10,102,194,0.15);color:#70b5f9;border:1px solid rgba(10,102,194,0.3);}
+.source-badge.gh{background:rgba(255,255,255,0.1);color:#e6edf3;border:1px solid rgba(255,255,255,0.2);}
+.source-badge.pdf{background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);}
+
 .del-btn{
   background:none;border:none;cursor:pointer;
   color:var(--muted);padding:5px;border-radius:5px;
@@ -444,14 +453,21 @@ td{padding:13px 16px;font-size:0.8rem;vertical-align:middle;}
 <header>
   <div class="logo"><div class="logo-dot"></div>SN <em>Sourcer</em></div>
   <div class="header-right">
-    <span class="tag">India</span>
-    <span class="tag">Open To Work</span>
+    <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;cursor:pointer;color:var(--text2);" title="Ignore seen URLs and get fresh results">
+      <input type="checkbox" id="freshToggle"> 🔄 Fresh
+    </label>
     <button class="btn btn-secondary" id="exportBtn" onclick="exportCSV()">
       <span>⬇️ Export CSV</span>
     </button>
+    <input type="text" id="fetchSkillsInput" placeholder="Skill (e.g. ITSM)" style="margin-left: 8px; width: 130px; padding: 6px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Geist',sans-serif; font-size: 0.75rem; outline: none;">
+    <div style="position: relative; margin: 0 8px;">
+      <button class="btn btn-secondary" onclick="const d=document.getElementById('roleDropdown'); d.style.display=d.style.display==='none'?'block':'none'" style="font-size: 0.75rem; padding: 6px 10px; border-radius: 8px;">Roles ▼</button>
+      <div id="roleDropdown" style="display: none; position: absolute; top: 100%; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px; z-index: 200; width: 220px; max-height: 250px; overflow-y: auto; margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+      </div>
+    </div>
     <button class="btn btn-primary" id="fetchBtn" onclick="triggerFetch()">
       <div class="spinner"></div>
-      <span>⚡ Fetch New</span>
+      <span>⚡ SerpAPI</span>
     </button>
   </div>
 </header>
@@ -521,7 +537,7 @@ td{padding:13px 16px;font-size:0.8rem;vertical-align:middle;}
       <thead>
         <tr>
           <th>#</th><th>Candidate</th><th>Location</th><th>Role</th>
-          <th>Status</th><th>LinkedIn</th><th>Snippet</th><th></th>
+          <th>Source</th><th>Status</th><th>Link</th><th>Snippet</th><th></th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -570,6 +586,16 @@ async function loadFilters(){
   d.locations.forEach(l=>ls.add(new Option(l,l)));
   const rs=document.getElementById('roleFilter');
   d.roles.forEach(r=>rs.add(new Option(r,r)));
+
+  const ar=await fetch('/api/available-roles').then(r=>r.json());
+  const dropdown = document.getElementById('roleDropdown');
+  dropdown.innerHTML = ar.roles.map(r => `<label style="display:flex; align-items:center; gap:6px; padding:4px; font-size:0.75rem; cursor:pointer; color:var(--text);"><input type="checkbox" class="fetch-role-cb" value="${esc(r)}"> ${esc(r)}</label>`).join('');
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#roleDropdown') && !e.target.closest('button[onclick*="roleDropdown"]')) {
+      document.getElementById('roleDropdown').style.display = 'none';
+    }
+  });
 }
 
 async function loadCandidates(page){
@@ -586,6 +612,12 @@ async function loadCandidates(page){
   renderTable(d.data,page*pageSize);
   updatePagination();
 }
+function getSourceBadge(source) {
+  const s = source || 'serpapi';
+  if (s === 'linkedin' || s === 'serpapi') return `<span class="source-badge li">LinkedIn</span>`;
+  return `<span class="source-badge">${esc(s)}</span>`;
+}
+
 function renderTable(rows,offset){
   const tbody=document.getElementById('tbody');
   const empty=document.getElementById('emptyState');
@@ -602,10 +634,11 @@ function renderTable(rows,offset){
           <div class="candidate-title">${esc(c.title)}</div></td>
       <td><span class="loc-badge">${esc(c.location||'—')}</span></td>
       <td><span class="role-badge">${esc(c.role_searched||'—')}</span></td>
+      <td>${getSourceBadge(c.source)}</td>
       <td><span class="otw-badge"><div class="otw-dot"></div>Open</span></td>
       <td><a href="${esc(c.linkedin_url)}" target="_blank" class="li-link">
         <svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
-        Profile</a></td>
+        Link</a></td>
       <td class="snippet-cell" title="${esc(c.snippet)}">${esc(c.snippet||'—')}</td>
       <td><button class="del-btn" onclick="deleteCandidate(${c.id})" title="Remove">
         <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -630,17 +663,23 @@ async function deleteCandidate(id){
 
 let pollTimer=null;
 function setBusy(busy){
-  ['fetchBtn'].forEach(id=>{
-    const b=document.getElementById(id);
+  const b=document.getElementById('fetchBtn');
+  if(b) {
     b.disabled=busy;
     if(busy) b.classList.add('loading'); else b.classList.remove('loading');
-  });
+  }
 }
 
 async function triggerFetch(){
   setBusy(true);clearLog();showLog();
   document.getElementById('keyWarning').classList.remove('show');
-  const d=await fetch('/api/fetch',{method:'POST'}).then(r=>r.json());
+  const fresh = document.getElementById('freshToggle').checked;
+  const selectedRoles = Array.from(document.querySelectorAll('.fetch-role-cb:checked')).map(cb => cb.value).join(',');
+  const skills = document.getElementById('fetchSkillsInput').value;
+  let url = '/api/fetch?fresh=' + fresh;
+  if(selectedRoles) url += '&roles=' + encodeURIComponent(selectedRoles);
+  if(skills) url += '&skills=' + encodeURIComponent(skills);
+  const d=await fetch(url, {method:'POST'}).then(r=>r.json());
   if(d.status==='already_running') appendLog('Already running...','warn');
   else appendLog('⚡ Fetch started — validating SerpAPI keys...');
   pollStatus();

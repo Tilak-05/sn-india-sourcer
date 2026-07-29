@@ -1,7 +1,10 @@
 import os
+from dotenv import load_dotenv
 
-INDIA_LOCATIONS = ["India","Bangalore","Hyderabad","Pune","Mumbai","Chennai","Delhi","Noida","Gurgaon"]
-SN_ROLES = ["ServiceNow Developer","ServiceNow Administrator","ServiceNow Architect","ServiceNow Consultant","ServiceNow ITSM","ITSM","ServiceNow Itom","custom app","HRSD","SecOps","GRC","ITOM","ITBM","CSM","FSM","ServiceNow Developer","ServiceNow consultant"]
+load_dotenv()
+
+INDIA_LOCATIONS = ["Mumbai", "Pune", "Bangalore", "Hyderabad", "Chennai", "Delhi", "Noida", "Gurugram", "remote India"]
+SN_ROLES = ["ServiceNow developer", "ServiceNow ITSM", "ServiceNow ITOM", "ServiceNow CSM", "ServiceNow admin", "ServiceNow architect", "ServiceNow integration developer", "ServiceNow platform engineer"]
 
 OUTPUT_CSV  = "output/candidates.csv"
 OUTPUT_JSON = "output/candidates.json"
@@ -20,3 +23,5 @@ SERPAPI_KEYS = [
     ]
     if k.strip()
 ]
+
+# End of settings
